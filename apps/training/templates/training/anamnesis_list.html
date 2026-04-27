@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Anamneses</h1></div>
+  <div class="actions"><a class="btn" href="{% url 'training:anamnesis_create' %}">+ Nova</a></div>
+</div>
+<div class="card"><div class="stack">
+  {% for a in anamneses %}
+    <div class="list-item">
+      <div>
+        <strong>{{ a.athlete.get_full_name|default:a.athlete.username }}</strong>
+        <p>{% if a.years_training %}{{ a.years_training }} anos{% endif %}
+           {% if a.best_meet_total %} · {{ a.best_meet_total }}{% endif %}</p>
+        {% if a.injuries %}<p class="muted"><em>Lesões:</em> {{ a.injuries|truncatewords:15 }}</p>{% endif %}
+      </div>
+      <div class="actions">
+        <span class="muted">{{ a.created_at|date:"d/m/Y" }}</span>
+        <a class="btn btn-sm btn-outline" href="{% url 'training:anamnesis_update' a.pk %}">Editar</a>
+      </div>
+    </div>
+  {% empty %}<p class="muted">Nenhuma anamnese.</p>{% endfor %}
+</div></div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Tonelagem</h1><p class="muted">Volume executado (carga × reps × séries) por semana e por movimento.</p></div>
+</div>
+
+<div class="card">
+  <form method="get">
+    <div class="field">
+      <label>Plano</label>
+      <select name="plan" class="input" onchange="this.form.submit()">
+        {% for plan in plans %}
+          <option value="{{ plan.pk }}" {% if selected_plan and plan.pk == selected_plan.pk %}selected{% endif %}>
+            {{ plan.name }} — {{ plan.athlete.get_full_name|default:plan.athlete.username }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+</div>
+
+{% if selected_plan and weekly_tonnage %}
+  <div class="stats-grid">
+    <div class="stat-card"><span>Agachamento</span><strong>{{ total_squat|floatformat:0 }} kg</strong></div>
+    <div class="stat-card"><span>Supino</span><strong>{{ total_bench|floatformat:0 }} kg</strong></div>
+    <div class="stat-card"><span>Terra</span><strong>{{ total_deadlift|floatformat:0 }} kg</strong></div>
+    <div class="stat-card"><span>Total</span><strong>{{ total_all|floatformat:0 }} kg</strong></div>
+  </div>
+
+  <section class="card">
+    <div class="panel-head"><h2>Por semana</h2></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Semana</th><th>Início</th><th>Bloco</th>
+            <th>Agacho (kg)</th><th>Supino (kg)</th><th>Terra (kg)</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for w in weekly_tonnage %}
+          <tr>
+            <td><strong>{{ w.week_number }}</strong></td>
+            <td>{{ w.start_date }}</td>
+            <td><span class="badge">{{ w.block_type }}</span></td>
+            <td>{{ w.squat_kg|floatformat:0 }}</td>
+            <td>{{ w.bench_kg|floatformat:0 }}</td>
+            <td>{{ w.deadlift_kg|floatformat:0 }}</td>
+            <td><strong>{{ w.total_kg|floatformat:0 }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% elif selected_plan %}
+  <div class="card"><p class="muted">Sem dados de tonelagem executada ainda neste plano.</p></div>
+{% else %}
+  <div class="card"><p class="muted">Nenhum plano disponível.</p></div>
+{% endif %}
+{% endblock %}

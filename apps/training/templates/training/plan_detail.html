@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ plan.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>{{ plan.name }}</h1>
+    <p class="muted">
+      Atleta: <strong>{{ plan.athlete.get_full_name|default:plan.athlete.username }}</strong>
+      {% if plan.meet_date %}· <span class="badge badge-info">Competição {{ plan.meet_date|date:"d/m/Y" }}</span>{% endif %}
+      {% if plan.goal %} · {{ plan.goal }}{% endif %}
+    </p>
+  </div>
+  {% if can_edit %}
+  <div class="actions">
+    <a class="btn btn-outline" href="{% url 'training:plan_update' plan.pk %}">Editar</a>
+    <form method="post" action="{% url 'training:plan_add_week' plan.pk %}" style="display:inline">
+      {% csrf_token %}
+      <button class="btn" type="submit">+ Semana</button>
+    </form>
+    <a class="btn btn-danger" href="{% url 'training:plan_delete' plan.pk %}">Excluir plano</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if weeks %}
+  {% for week in weeks %}
+    <section class="card week-block">
+      <header class="panel-head">
+        <div>
+          <h2>Semana {{ week.week_number }}
+            <small class="muted">· {{ week.start_date|date:"d/m" }} a {{ week.end_date|date:"d/m" }}</small>
+          </h2>
+          <span class="badge badge-info">{{ week.get_block_type_display }}</span>
+          {% if week.focus %}<span class="muted">· {{ week.focus }}</span>{% endif %}
+        </div>
+        {% if can_edit %}
+        <div class="actions">
+          <form method="post"
+                action="{% url 'training:session_add' plan.pk week.week_number %}"
+                style="display:flex; gap:6px; align-items:center;">
+            {% csrf_token %}
+            <input type="text" name="label" placeholder="A" maxlength="3" class="input" style="width: 60px;">
+            <input type="date" name="scheduled_date" class="input" required>
+            <button class="btn btn-sm" type="submit">+ Dia</button>
+          </form>
+          <form method="post" action="{% url 'training:plan_remove_week' plan.pk week.week_number %}"
+                onsubmit="return confirm('Remover a semana {{ week.week_number }} e todas as suas sessões?')"
+                style="display:inline">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-danger" type="submit">× Remover semana</button>
+          </form>
+        </div>
+        {% endif %}
+      </header>
+
+      {% if week.sessions.all %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Dia</th><th>Título</th><th>Exercícios</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for s in week.sessions.all %}
+              <tr>
+                <td>
+                  {% if s.label %}<span class="session-label-mini">TREINO {{ s.label }}</span>{% endif %}
+                  <strong>{{ s.scheduled_date|date:"D d/m" }}</strong>
+                </td>
+                <td>{{ s.title|default:"—" }}</td>
+                <td>{{ s.session_exercises.count }} ex.</td>
+                <td>
+                  {% if s.completed %}<span class="badge badge-success">Concluída</span>
+                  {% else %}<span class="badge">Pendente</span>{% endif %}
+                  {% if s.feedback %}<span class="badge badge-info">FB</span>{% endif %}
+                </td>
+                <td>
+                  <a class="btn btn-sm btn-outline" href="{% url 'training:session_detail' s.pk %}">Abrir</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p class="muted">Sem sessões nesta semana.</p>
+      {% endif %}
+    </section>
+  {% endfor %}
+{% else %}
+  <div class="card">
+    <h2>Sem semanas ainda</h2>
+    <p class="muted">Clique em <strong>+ Semana</strong> para adicionar a primeira.</p>
+  </div>
+{% endif %}
+{% endblock %}

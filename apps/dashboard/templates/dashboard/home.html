@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Painel</h1><p class="muted">Visão geral.</p></div>
+  {% if is_trainer %}
+  <div class="actions">
+    <a class="btn" href="{% url 'training:plan_create' %}">+ Plano</a>
+    <a class="btn btn-outline" href="{% url 'accounts:athlete_create' %}">+ Atleta</a>
+  </div>
+  {% endif %}
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card"><span>Planos ativos</span><strong>{{ total_active_plans }}</strong></div>
+</div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <div class="panel-head">
+      <h2>Planos ativos</h2>
+      <a class="btn btn-sm btn-outline" href="{% url 'training:plan_list' %}">Ver todos</a>
+    </div>
+    <div class="stack">
+      {% for plan in active_plans %}
+        <a class="list-item" href="{% url 'training:plan_detail' plan.pk %}">
+          <div>
+            <strong>{{ plan.name }}</strong>
+            <p>{{ plan.athlete.get_full_name|default:plan.athlete.username }}
+            {% if plan.meet_date %} · comp. {{ plan.meet_date|date:"d/m" }}{% endif %}</p>
+          </div>
+          <span class="muted">→</span>
+        </a>
+      {% empty %}<p class="muted">Nenhum plano ativo.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="panel-head"><h2>Próximas sessões</h2></div>
+    <div class="stack">
+      {% for s in upcoming_sessions %}
+        <a class="list-item" href="{% url 'training:session_detail' s.pk %}">
+          <div>
+            <strong>{{ s.scheduled_date|date:"D d/m" }}</strong>
+            <p>{{ s.week.plan.name }}{% if s.title %} · {{ s.title }}{% endif %}</p>
+          </div>
+          <span class="muted">→</span>
+        </a>
+      {% empty %}<p class="muted">Nada agendado.</p>{% endfor %}
+    </div>
+  </section>
+</div>
+
+<div class="grid grid-2" style="margin-top: 16px;">
+  <section class="card">
+    <div class="panel-head"><h2>Feedbacks recentes</h2></div>
+    <div class="stack">
+      {% for f in recent_feedbacks %}
+        <div class="list-item">
+          <div>
+            <strong>{{ f.athlete.get_full_name|default:f.athlete.username }}</strong>
+            <p>{{ f.session.scheduled_date|date:"d/m" }} · RPE {{ f.session_rpe|default:"—" }}
+               {% if f.had_pain %}· <span class="badge badge-danger">Dor</span>{% endif %}
+               {% if f.was_tired %}· <span class="badge badge-warn">Cansaço</span>{% endif %}</p>
+          </div>
+          <a class="btn btn-sm btn-outline" href="{% url 'training:session_detail' f.session.pk %}">Ver</a>
+        </div>
+      {% empty %}<p class="muted">Nenhum feedback.</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="panel-head"><h2>PRs recentes</h2><a class="btn btn-sm btn-outline" href="{% url 'dashboard:pr_log' %}">Ver tudo</a></div>
+    <div class="stack">
+      {% for pr in recent_prs %}
+        <div class="list-item">
+          <div><strong>{{ pr.exercise.name }} — {{ pr.weight_kg }} kg × {{ pr.reps }}</strong>
+            <p>{{ pr.athlete.get_full_name|default:pr.athlete.username }}</p></div>
+          <span class="muted">{{ pr.date|date:"d/m/Y" }}</span>
+        </div>
+      {% empty %}<p class="muted">Sem PRs.</p>{% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

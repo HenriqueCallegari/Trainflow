@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Planos</h1></div>
+  {% if user.profile.is_trainer or user.is_superuser %}
+  <div class="actions"><a class="btn" href="{% url 'training:plan_create' %}">+ Novo plano</a></div>
+  {% endif %}
+</div>
+<div class="card"><div class="table-wrap">
+  <table>
+    <thead><tr><th>Nome</th><th>Atleta</th><th>Início</th><th>Competição</th><th>Semanas</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for plan in plans %}
+      <tr>
+        <td><strong><a href="{% url 'training:plan_detail' plan.pk %}">{{ plan.name }}</a></strong></td>
+        <td>{{ plan.athlete.get_full_name|default:plan.athlete.username }}</td>
+        <td>{{ plan.start_date|date:"d/m/Y" }}</td>
+        <td>{% if plan.meet_date %}{{ plan.meet_date|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+        <td>{{ plan.total_weeks }}</td>
+        <td>{% if plan.is_active %}<span class="badge badge-success">Ativo</span>{% else %}<span class="badge">Arquivado</span>{% endif %}</td>
+        <td><a class="btn btn-sm btn-outline" href="{% url 'training:plan_detail' plan.pk %}">Abrir</a></td>
+      </tr>
+      {% empty %}<tr><td colspan="7" class="muted">Nenhum plano.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

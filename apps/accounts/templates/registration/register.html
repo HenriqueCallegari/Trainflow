@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-panel card">
+  <h1>Criar conta de treinador</h1>
+  <p class="muted">Contas de atleta são criadas pelo treinador responsável, dentro do sistema.</p>
+  <form method="post">{% csrf_token %}
+    {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors }}</div>{% endif %}
+    {% for field in form %}
+      <div class="field" style="margin-bottom: 14px;">
+        <label>{{ field.label }}</label>{{ field }}
+        {% if field.help_text %}<small class="muted">{{ field.help_text|safe }}</small>{% endif %}
+        {% if field.errors %}<small style="color:var(--danger);">{{ field.errors|join:", " }}</small>{% endif %}
+      </div>
+    {% endfor %}
+    <button class="btn" type="submit">Registrar</button>
+    <a class="btn btn-outline" href="{% url 'login' %}">Já tenho conta</a>
+  </form>
+</div>
+{% endblock %}

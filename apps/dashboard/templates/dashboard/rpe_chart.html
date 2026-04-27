@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load training_extras %}
+{% block content %}
+<div class="page-header"><div><h1>Tabela RPE/RIR</h1><p class="muted">% do 1RM.</p></div></div>
+<div class="card"><div class="table-wrap">
+  <table>
+    <thead><tr><th>Reps</th>{% for rpe in rpes %}<th>RPE {{ rpe }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for r in reps_range %}
+      <tr><td><strong>{{ r }}</strong></td>
+        {% for rpe in rpes %}<td>{{ rpe_table|dictitem:r|dictitem:rpe|floatformat:3 }}</td>{% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

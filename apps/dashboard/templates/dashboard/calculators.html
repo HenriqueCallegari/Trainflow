@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><div><h1>Calculadoras</h1></div></div>
+
+<div class="grid grid-2">
+  <section class="card">
+    <h2>IPF GL Points</h2>
+    <form method="get" class="form-grid">
+      <div class="field"><label>Sexo</label>
+        <select name="sex" class="input">
+          <option value="M" {% if sex == "M" %}selected{% endif %}>Masculino</option>
+          <option value="F" {% if sex == "F" %}selected{% endif %}>Feminino</option>
+        </select>
+      </div>
+      <div class="field"><label>Modalidade</label>
+        <select name="equipment" class="input">
+          <option value="raw" {% if equipment == "raw" %}selected{% endif %}>Clássica</option>
+          <option value="equipped" {% if equipment == "equipped" %}selected{% endif %}>Equipado</option>
+        </select>
+      </div>
+      <div class="field"><label>Prova</label>
+        <select name="event" class="input">
+          <option value="sbd" {% if event == "sbd" %}selected{% endif %}>SBD</option>
+          <option value="bench" {% if event == "bench" %}selected{% endif %}>Supino</option>
+        </select>
+      </div>
+      <div class="field"><label>Peso (kg)</label>
+        <input class="input" type="number" step="0.01" name="bodyweight" value="{{ input_values.bodyweight }}"></div>
+      <div class="field"><label>Agacho (kg)</label>
+        <input class="input" type="number" step="0.5" name="squat" value="{{ input_values.squat }}"></div>
+      <div class="field"><label>Supino (kg)</label>
+        <input class="input" type="number" step="0.5" name="bench" value="{{ input_values.bench }}"></div>
+      <div class="field"><label>Terra (kg)</label>
+        <input class="input" type="number" step="0.5" name="deadlift" value="{{ input_values.deadlift }}"></div>
+      <div class="full-width"><button class="btn" type="submit">Calcular</button></div>
+    </form>
+    {% if ipf_points %}
+      <div class="card" style="margin-top: 16px;">
+        <small class="muted">Total</small><h3>{{ ipf_total }} kg</h3>
+        <small class="muted">IPF GL Points</small>
+        <h2 style="color: var(--accent); font-size: 2.2rem;">{{ ipf_points }}</h2>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Estimativa de 1RM</h2>
+    <form method="get" class="form-grid">
+      <div class="field"><label>Carga (kg)</label>
+        <input class="input" type="number" step="0.5" name="lifted" value="{{ input_values.lifted }}"></div>
+      <div class="field"><label>Reps (1-10)</label>
+        <input class="input" type="number" min="1" max="10" name="reps" value="{{ input_values.reps }}"></div>
+      <div class="field"><label>RPE (opcional)</label>
+        <input class="input" type="number" step="0.5" min="6" max="10" name="rpe" value="{{ input_values.rpe }}"></div>
+      <div class="full-width"><button class="btn" type="submit">Estimar</button></div>
+    </form>
+    <div class="stack" style="margin-top: 14px;">
+      {% if estimated_1rm_rpe %}<div class="list-item"><div><strong>Via RPE</strong></div><span style="color:var(--accent);font-weight:700;">{{ estimated_1rm_rpe }} kg</span></div>{% endif %}
+      {% if estimated_1rm_epley %}<div class="list-item"><div>Epley</div><span>{{ estimated_1rm_epley }} kg</span></div>{% endif %}
+      {% if estimated_1rm_brzycki %}<div class="list-item"><div>Brzycki</div><span>{{ estimated_1rm_brzycki }} kg</span></div>{% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Warm-ups</h2>
+    <form method="get" class="form-grid">
+      <div class="field"><label>Carga alvo (kg)</label>
+        <input class="input" type="number" step="0.5" name="target" value="{{ input_values.target }}"></div>
+      <div class="full-width"><button class="btn" type="submit">Gerar</button></div>
+    </form>
+    {% if warmup_sets %}
+      <div class="table-wrap" style="margin-top: 14px;">
+        <table><thead><tr><th>%</th><th>Carga</th></tr></thead>
+          <tbody>
+            {% for set in warmup_sets %}
+            <tr><td>{% if set.pct == 0 %}Barra{% else %}{{ set.pct }}%{% endif %}</td>
+                <td><strong>{{ set.load }} kg</strong></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Tabela RPE/RIR</h2>
+    <p class="muted">Referência rápida:</p>
+    <ul>
+      <li>RPE 10 = 0 RIR (máximo do dia)</li>
+      <li>RPE 9 = 1 RIR</li>
+      <li>RPE 8 = 2 RIR (zona padrão)</li>
+      <li>RPE 7 = 3 RIR</li>
+      <li>RPE 6 = 4 RIR</li>
+    </ul>
+    <a href="{% url 'dashboard:rpe_chart' %}" class="btn btn-outline">Ver tabela completa</a>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div><h1>Biblioteca de exercícios</h1></div>
+  <div class="actions"><a class="btn" href="{% url 'training:exercise_create' %}">+ Novo</a></div>
+</div>
+
+<div class="card" style="margin-bottom: 14px;">
+  <form method="get" class="search-bar">
+    <input type="search" name="q" placeholder="Buscar exercício..." value="{{ query }}" class="input" autofocus>
+    {% if active_tier %}<input type="hidden" name="tier" value="{{ active_tier }}">{% endif %}
+    <button class="btn" type="submit">Buscar</button>
+    {% if query or active_tier %}<a class="btn btn-outline" href="{% url 'training:exercise_list' %}">Limpar</a>{% endif %}
+  </form>
+</div>
+
+<div class="week-list">
+  <a class="{% if not active_tier %}active{% endif %}" href="?{% if query %}q={{ query }}{% endif %}">Todos</a>
+  {% for value, label in tiers %}
+    <a class="{% if active_tier == value %}active{% endif %}"
+       href="?tier={{ value }}{% if query %}&q={{ query }}{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+<div class="card"><div class="table-wrap">
+  <table>
+    <thead><tr><th>Nome</th><th>Tier</th><th>Movimento-pai</th><th>Ativo</th><th></th></tr></thead>
+    <tbody>
+      {% for e in exercises %}
+      <tr>
+        <td><strong>{{ e.name }}</strong>{% if e.cues %}<p class="muted">{{ e.cues|truncatewords:15 }}</p>{% endif %}</td>
+        <td>{{ e.get_tier_display }}</td>
+        <td>{{ e.get_main_lift_display }}</td>
+        <td>{% if e.is_active %}<span class="badge badge-success">Sim</span>{% else %}<span class="badge">Não</span>{% endif %}</td>
+        <td>
+          <a class="btn btn-sm btn-outline" href="{% url 'training:exercise_update' e.pk %}">Editar</a>
+          <a class="btn btn-sm btn-danger" href="{% url 'training:exercise_delete' e.pk %}">×</a>
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="5" class="muted">Nenhum exercício encontrado{% if query %} para "{{ query }}"{% endif %}.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div></div>
+{% endblock %}

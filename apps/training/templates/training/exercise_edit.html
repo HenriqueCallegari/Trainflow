@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><div>
+  <h1>Registrar execução</h1>
+  <p class="muted"><a href="{% url 'training:session_detail' object.session.pk %}">← voltar para a sessão</a></p>
+</div></div>
+<div class="card form-panel">
+  <h2 style="margin-bottom: 4px;">{{ object.exercise.name }}</h2>
+  <p class="muted">
+    Planejado: {{ object.planned_sets }}×{{ object.planned_reps|default:"—" }}
+    {% if object.planned_load_kg %} @ {{ object.planned_load_kg }} kg{% endif %}
+    {% if object.planned_rpe %} · RPE alvo {{ object.planned_rpe }}{% endif %}
+  </p>
+  <form method="post">{% csrf_token %}
+    <div class="form-grid">
+      {% for field in form %}
+        <div class="field {% if field.name == 'notes' %}full-width{% endif %}">
+          <label>{{ field.label }}</label>{{ field }}
+          {% if field.errors %}<small style="color:var(--danger);">{{ field.errors|join:", " }}</small>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="actions" style="margin-top: 18px;">
+      <button class="btn" type="submit">Salvar</button>
+      <a class="btn btn-outline" href="{% url 'training:session_detail' object.session.pk %}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

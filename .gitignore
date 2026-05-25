@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtualenv
+venv/
+.venv/
+env/
+
+# Django
+staticfiles/
+media/
+*.log
+
+# Config local
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Claude Code
+.claude/
+
+

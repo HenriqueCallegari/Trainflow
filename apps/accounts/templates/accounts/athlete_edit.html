@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header"><div>
+  <h1>Editar perfil — {{ object.user.get_full_name|default:object.user.username }}</h1>
+  <p class="muted">Login: <code>{{ object.user.username }}</code></p>
+</div></div>
+
+{# Formulário principal de dados antropométricos #}
+<div class="card form-panel">
+  <form method="post">{% csrf_token %}
+    <div class="form-grid">
+      {% for field in form %}
+        <div class="field">
+          <label>{{ field.label }}</label>{{ field }}
+          {% if field.errors %}<small style="color:var(--danger);">{{ field.errors|join:", " }}</small>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <div class="actions" style="margin-top: 18px;">
+      <button class="btn" type="submit">Salvar</button>
+      <a class="btn btn-outline" href="{% url 'accounts:my_athletes' %}">Voltar</a>
+    </div>
+  </form>
+</div>
+
+{# Card de gerenciamento de senha #}
+<div class="card form-panel" style="margin-top: 16px;">
+  <h2>Senha do atleta</h2>
+  <p class="muted">
+    Por segurança, senhas são armazenadas com hash e não podem ser visualizadas.
+    Se o atleta esqueceu, gere uma nova aqui.
+  </p>
+  <form method="post"
+        onsubmit="return confirm('Gerar nova senha para {{ object.user.username }}? A senha atual será invalidada.');">
+    {% csrf_token %}
+    <input type="hidden" name="reset_password" value="1">
+    <button class="btn btn-secondary" type="submit">Gerar nova senha</button>
+  </form>
+</div>
+{% endblock %}

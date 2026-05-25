@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card form-panel">
+  <h1>Confirmar exclusão</h1>
+  <p>Excluir <strong>{{ object }}</strong>? Não dá pra desfazer.</p>
+  <form method="post">{% csrf_token %}
+    <div class="actions">
+      <button class="btn btn-danger" type="submit">Sim, excluir</button>
+      <a class="btn btn-outline" href="javascript:history.back()">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

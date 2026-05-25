@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="page-header">
+  <div><h1>PR Log</h1></div>
+  <div class="actions"><a class="btn" href="{% url 'training:pr_create' %}">+ Novo PR</a></div>
+</div>
+
+<section class="card">
+  <div class="panel-head"><h2>Melhores SBD por atleta</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Atleta</th><th>Movimento</th><th>Melhor</th></tr></thead>
+      <tbody>
+        {% for row in main_lifts %}
+        <tr>
+          <td>{{ row.athlete__first_name|default:row.athlete__username }}</td>
+          <td>{{ row.exercise__main_lift }}</td>
+          <td><strong>{{ row.best }} kg</strong></td>
+        </tr>
+        {% empty %}<tr><td colspan="3" class="muted">Sem PRs principais ainda.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card" style="margin-top: 16px;">
+  <div class="panel-head"><h2>Histórico</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Atleta</th><th>Exercício</th><th>Carga × Reps</th><th>Contexto</th></tr></thead>
+      <tbody>
+        {% for pr in all_prs %}
+        <tr>
+          <td>{{ pr.date|date:"d/m/Y" }}</td>
+          <td>{{ pr.athlete.get_full_name|default:pr.athlete.username }}</td>
+          <td>{{ pr.exercise.name }}</td>
+          <td><strong>{{ pr.weight_kg }} kg</strong> × {{ pr.reps }}</td>
+          <td>{% if pr.context == "meet" %}<span class="badge badge-info">{{ pr.meet_name|default:"Comp" }}</span>{% else %}Treino{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="5" class="muted">Sem PRs.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

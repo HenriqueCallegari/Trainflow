@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}{{ session.scheduled_date|date:"d/m/Y" }} — {{ session.week.plan.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>
+      {% if session.label %}<span class="session-label">TREINO {{ session.label }}</span>{% endif %}
+      {{ session.scheduled_date|date:"l, d/m/Y" }}
+    </h1>
+    <p class="muted">
+      <a href="{% url 'training:plan_detail' plan.pk %}">← {{ plan.name }}</a>
+      · Semana {{ session.week.week_number }}
+      {% if session.title %} · {{ session.title }}{% endif %}
+      {% if session.completed %}<span class="badge badge-success">Concluída</span>{% endif %}
+    </p>
+  </div>
+  <div class="actions">
+    <form method="post" action="{% url 'training:session_toggle' session.pk %}" style="display:inline">
+      {% csrf_token %}
+      <button class="btn btn-outline" type="submit">
+        {% if session.completed %}Reabrir{% else %}Marcar concluída{% endif %}
+      </button>
+    </form>
+    {% if can_edit %}
+      <a class="btn btn-outline" href="{% url 'training:session_update' session.pk %}">Editar</a>
+      <form method="post" action="{% url 'training:session_delete' session.pk %}"
+            onsubmit="return confirm('Remover esta sessão?')" style="display:inline">
+        {% csrf_token %}
+        <button class="btn btn-danger" type="submit">× Excluir</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
+
+{% if session.notes %}
+  <div class="card"><strong>Notas do treinador</strong><p class="muted">{{ session.notes|linebreaksbr }}</p></div>
+{% endif %}
+
+<section class="card" style="margin-top: 16px;">
+  <div class="panel-head"><h2>Exercícios</h2></div>
+
+  {% if session.session_exercises.all %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Exercício</th><th>Séries×Reps</th>
+            <th>Previsto</th><th>Carga feita</th><th>RPE</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for se in session.session_exercises.all %}
+          <tr>
+            <td>{{ se.order }}</td>
+            <td>
+              <strong>{{ se.exercise.name }}</strong>
+              {% if se.exercise.tier == "principal" %}
+                <span class="badge badge-info">Principal</span>
+              {% elif se.exercise.tier == "primary_var" %}
+                <span class="badge">Variação</span>
+              {% endif %}
+            </td>
+            <td>{{ se.planned_sets }} × {{ se.planned_reps|default:"—" }}</td>
+            <td>
+              {% if se.planned_load_kg %}
+                <strong>{{ se.planned_load_kg }} kg</strong>
+                {% if se.planned_load_percentage %}
+                  <br><small class="muted">{{ se.planned_load_percentage }}% de {{ se.reference_1rm_kg }}</small>
+                {% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if se.actual_load_kg %}{{ se.actual_load_kg }} kg{% endif %}
+              {% if se.actual_reps %}× {{ se.actual_reps }}{% endif %}
+              {% if se.actual_sets %} × {{ se.actual_sets }}s{% endif %}
+              {% if not se.actual_load_kg %}<em class="muted">a registrar</em>{% endif %}
+            </td>
+            <td>
+              {% if se.planned_rpe %}alvo {{ se.planned_rpe }}{% endif %}
+              {% if se.actual_rpe %}<br>real {{ se.actual_rpe }}{% endif %}
+            </td>
+            <td>
+              {% if can_edit %}
+              <form method="post" action="{% url 'training:session_exercise_move' se.pk 'up' %}" style="display:inline">
+                {% csrf_token %}<button class="btn btn-sm btn-outline" type="submit" title="Subir">↑</button>
+              </form>
+              <form method="post" action="{% url 'training:session_exercise_move' se.pk 'down' %}" style="display:inline">
+                {% csrf_token %}<button class="btn btn-sm btn-outline" type="submit" title="Descer">↓</button>
+              </form>
+              {% endif %}
+              <a class="btn btn-sm btn-outline" href="{% url 'training:session_exercise_update' se.pk %}">
+                {% if can_edit %}Editar{% else %}Registrar{% endif %}
+              </a>
+              {% if can_edit %}
+              <form method="post" action="{% url 'training:session_exercise_delete' se.pk %}"
+                    onsubmit="return confirm('Remover?')" style="display:inline">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-danger" type="submit">×</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">Nenhum exercício nesta sessão ainda.</p>
+  {% endif %}
+</section>
+
+{% if can_edit %}
+<div class="grid grid-2" style="margin-top: 16px;">
+  <section class="card">
+    <h2>Adicionar exercício existente</h2>
+    {% if rep_schemes %}
+      <div class="rep-schemes">
+        <span class="muted">Reps rápidos:</span>
+        {% for scheme in rep_schemes %}
+          <button type="button" class="badge clickable rep-scheme-chip"
+                  data-sets="{{ scheme.sets }}" data-reps="{{ scheme.reps }}">
+            {{ scheme.label }}
+          </button>
+        {% endfor %}
+        <a href="{% url 'training:repscheme_list' %}" class="muted">+ gerenciar</a>
+      </div>
+    {% endif %}
+    <form method="post" action="{% url 'training:session_add_exercise' session.pk %}" id="add-exercise-form">
+      {% csrf_token %}
+      <div class="form-grid">
+        {% for field in add_exercise_form %}
+          <div class="field {% if forloop.first %}full-width{% endif %}">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <button class="btn" type="submit" style="margin-top: 10px;">Adicionar</button>
+    </form>
+    {% if rep_schemes %}
+    <script>
+      // Preenche planned_sets e planned_reps quando clica num chip de esquema.
+      document.querySelectorAll(".rep-scheme-chip").forEach(function(chip) {
+        chip.addEventListener("click", function() {
+          var form = document.getElementById("add-exercise-form");
+          var setsField = form.querySelector('[name="planned_sets"]');
+          var repsField = form.querySelector('[name="planned_reps"]');
+          if (setsField) setsField.value = this.dataset.sets;
+          if (repsField) repsField.value = this.dataset.reps;
+        });
+      });
+    </script>
+    {% endif %}
+  </section>
+
+  <section class="card">
+    <h2>Criar exercício novo</h2>
+    <p class="muted" style="margin-top:-6px;">
+      Adiciona ao catálogo e já coloca nesta sessão.
+    </p>
+    <form method="post" action="{% url 'training:session_create_exercise' session.pk %}">
+      {% csrf_token %}
+      <div class="form-grid">
+        {% for field in create_exercise_form %}
+          <div class="field {% if field.name == 'cues' %}full-width{% endif %}">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <button class="btn" type="submit" style="margin-top: 10px;">Criar e adicionar</button>
+    </form>
+  </section>
+</div>
+{% endif %}
+
+{# ==================== Feedback estruturado ==================== #}
+{% if can_feedback %}
+<section class="card" style="margin-top: 16px;">
+  <h2>{% if feedback %}Seu feedback{% else %}Registrar feedback{% endif %}</h2>
+  <form method="post" action="{% url 'training:session_feedback_submit' session.pk %}">
+    {% csrf_token %}
+    <div class="form-grid">
+      {% for field in feedback_form %}
+        <div class="field {% if field.name in 'pain_description,tired_description,general_notes' %}full-width{% endif %}">
+          {% if field.field.widget.input_type == 'checkbox' %}
+            <label class="checkbox-field">{{ field }} {{ field.label }}</label>
+          {% else %}
+            <label>{{ field.label }}</label>
+            {{ field }}
+          {% endif %}
+          {% if field.errors %}<small style="color:var(--danger);">{{ field.errors|join:", " }}</small>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+    <button class="btn" type="submit" style="margin-top: 14px;">Enviar feedback</button>
+  </form>
+
+  {% if feedback and feedback.trainer_response %}
+    <div class="alert alert-info" style="margin-top: 14px;">
+      <strong>Resposta do treinador:</strong><br>
+      {{ feedback.trainer_response|linebreaksbr }}
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if can_edit and feedback %}
+<section class="card" style="margin-top: 16px;">
+  <h2>Feedback do atleta</h2>
+  <div class="stack">
+    <p>
+      <strong>RPE da sessão:</strong> {{ feedback.session_rpe|default:"—" }}
+      {% if feedback.sleep_hours %} · <strong>Sono:</strong> {{ feedback.sleep_hours }} h{% endif %}
+      {% if feedback.bodyweight_kg %} · <strong>Peso:</strong> {{ feedback.bodyweight_kg }} kg{% endif %}
+    </p>
+    {% if feedback.had_pain %}
+      <p><span class="badge badge-danger">Dor</span> {{ feedback.pain_description }}</p>
+    {% endif %}
+    {% if feedback.was_tired %}
+      <p><span class="badge badge-warn">Cansaço</span> {{ feedback.tired_description }}</p>
+    {% endif %}
+    {% if feedback.general_notes %}
+      <p>{{ feedback.general_notes|linebreaksbr }}</p>
+    {% endif %}
+  </div>
+  <form method="post" action="{% url 'training:session_feedback_respond' feedback.pk %}" style="margin-top: 12px;">
+    {% csrf_token %}
+    <div class="field">
+      <label>Sua resposta</label>
+      <textarea class="input" name="trainer_response" rows="3">{{ feedback.trainer_response }}</textarea>
+    </div>
+    <button class="btn" type="submit" style="margin-top: 8px;">Responder</button>
+  </form>
+</section>
+{% endif %}
+
+{% endblock %}

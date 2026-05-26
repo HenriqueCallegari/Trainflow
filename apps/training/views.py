@@ -565,6 +565,18 @@ class ExerciseLibraryListView(LoginRequiredMixin, TrainerRequiredMixin, ListView
         ctx["tiers"] = ExerciseLibrary.Tier.choices
         ctx["active_tier"] = self.request.GET.get("tier", "")
         ctx["query"] = self.request.GET.get("q", "")
+        # Contadores totais (não afetados pelo filtro atual) para barra superior.
+        all_exercises = ExerciseLibrary.objects.all()
+        ctx["count_total"] = all_exercises.count()
+        ctx["count_principal"] = all_exercises.filter(
+            tier=ExerciseLibrary.Tier.PRINCIPAL,
+        ).count()
+        ctx["count_variation"] = all_exercises.filter(
+            tier=ExerciseLibrary.Tier.PRIMARY_VARIATION,
+        ).count()
+        ctx["count_accessory"] = all_exercises.filter(
+            tier=ExerciseLibrary.Tier.ACCESSORY,
+        ).count()
         return ctx
 
 

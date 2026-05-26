@@ -1,130 +1,178 @@
 {% extends "base.html" %}
+{% block title %}Biblioteca de exercícios{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
     <h1>Biblioteca de exercícios</h1>
     <p class="muted">Pesquise por nome, cue, movimento-pai ou classificação.</p>
   </div>
-  <div class="actions"><a class="btn" href="{% url 'training:exercise_create' %}">+ Novo</a></div>
+  <div class="actions">
+    <a class="btn" href="{% url 'training:exercise_create' %}">+ Novo exercício</a>
+  </div>
 </div>
 
-<div class="card search-card">
-  <form method="get" class="search-bar" data-search-form>
-    <div class="search-input-wrap">
-      <span class="search-icon" aria-hidden="true">⌕</span>
-      <input
-        type="search"
-        name="q"
-        placeholder="Buscar exercício, cue, movimento..."
-        value="{{ query }}"
-        class="input search-input"
-        autofocus
-        autocomplete="off"
-        data-search-input>
-      {% if query %}<a href="{% url 'training:exercise_list' %}{% if active_tier %}?tier={{ active_tier }}{% endif %}" class="search-clear" title="Limpar">×</a>{% endif %}
-    </div>
+<div class="ex-toolbar">
+  <form method="get" class="ex-search" data-search-form role="search" aria-label="Pesquisar exercícios">
+    <svg class="ex-search-icon" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7"></circle>
+      <path d="m20 20-3.5-3.5"></path>
+    </svg>
+    <input
+      type="search"
+      name="q"
+      placeholder="Buscar exercício, cue, movimento..."
+      value="{{ query }}"
+      class="ex-search-input"
+      autocomplete="off"
+      autofocus
+      data-search-input
+      aria-label="Termo de busca">
     {% if active_tier %}<input type="hidden" name="tier" value="{{ active_tier }}">{% endif %}
-    <button class="btn" type="submit">Buscar</button>
+    <kbd class="ex-search-kbd" data-search-kbd>/</kbd>
+    <a href="{% url 'training:exercise_list' %}{% if active_tier %}?tier={{ active_tier }}{% endif %}"
+       class="ex-search-clear" data-search-clear
+       title="Limpar (Esc)" aria-label="Limpar busca"
+       {% if not query %}hidden{% endif %}>
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+           stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18 6 6 18"></path>
+        <path d="m6 6 12 12"></path>
+      </svg>
+    </a>
   </form>
-  <div class="filter-chips" role="tablist">
-    <a class="chip {% if not active_tier %}chip-active{% endif %}"
-       href="?{% if query %}q={{ query }}{% endif %}">Todos</a>
-    {% for value, label in tiers %}
-      <a class="chip {% if active_tier == value %}chip-active{% endif %}"
-         href="?tier={{ value }}{% if query %}&q={{ query }}{% endif %}">{{ label }}</a>
-    {% endfor %}
+
+  <div class="ex-counts" aria-label="Resumo da biblioteca">
+    <span><strong>{{ count_total }}</strong> total</span>
+    <span><i class="ex-count-dot dot-principal"></i><strong>{{ count_principal }}</strong> principais</span>
+    <span><i class="ex-count-dot dot-variation"></i><strong>{{ count_variation }}</strong> variações</span>
+    <span><i class="ex-count-dot dot-accessory"></i><strong>{{ count_accessory }}</strong> acessórios</span>
   </div>
 </div>
 
-<div class="card"><div class="table-wrap">
-  <table data-search-table>
-    <thead>
-      <tr>
-        <th>Nome</th>
-        <th>Tier</th>
-        <th>Movimento-pai</th>
-        <th>Ativo</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for e in exercises %}
-      <tr
-        data-row
-        data-search-haystack="{{ e.name|lower }} {{ e.get_tier_display|lower }} {{ e.get_main_lift_display|lower }} {{ e.cues|lower }}">
-        <td>
-          <strong data-search-name>{{ e.name }}</strong>
-          {% if e.cues %}<p class="muted">{{ e.cues|truncatewords:15 }}</p>{% endif %}
-        </td>
-        <td>{{ e.get_tier_display }}</td>
-        <td>{{ e.get_main_lift_display }}</td>
-        <td>
-          {% if e.is_active %}
-            <span class="badge badge-success">Sim</span>
-          {% else %}
-            <span class="badge">Não</span>
-          {% endif %}
-        </td>
-        <td class="actions-cell">
-          <a class="btn btn-sm btn-outline" href="{% url 'training:exercise_update' e.pk %}">Editar</a>
-          <a class="btn btn-sm btn-danger" href="{% url 'training:exercise_delete' e.pk %}">×</a>
-        </td>
-      </tr>
-      {% empty %}
-      <tr data-empty-row>
-        <td colspan="5" class="muted empty-state">
-          Nenhum exercício encontrado{% if query %} para "<strong>{{ query }}</strong>"{% endif %}.
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  <div class="empty-state hidden" data-no-results>
-    Nenhum exercício corresponde ao filtro atual.
-  </div>
-</div></div>
+<div class="ex-filters" role="tablist">
+  <a class="chip {% if not active_tier %}chip-active{% endif %}"
+     href="?{% if query %}q={{ query }}{% endif %}">Todos</a>
+  {% for value, label in tiers %}
+    <a class="chip {% if active_tier == value %}chip-active{% endif %}"
+       href="?tier={{ value }}{% if query %}&q={{ query }}{% endif %}">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if exercises %}
+<div class="ex-grid" data-grid>
+  {% for e in exercises %}
+  <article class="ex-card {% if not e.is_active %}is-inactive{% endif %}"
+           style="--i: {{ forloop.counter0 }};"
+           data-tier="{{ e.tier }}"
+           data-search-haystack="{{ e.name|lower }} {{ e.get_tier_display|lower }} {{ e.get_main_lift_display|lower }} {{ e.cues|lower }}">
+    <header class="ex-card-head">
+      <h3 class="ex-card-name" data-search-name>{{ e.name }}</h3>
+      <span class="ex-card-tier">{{ e.get_tier_display }}</span>
+    </header>
+
+    <div>
+      <div class="ex-card-meta">
+        <span><strong>{{ e.get_main_lift_display }}</strong></span>
+      </div>
+      {% if e.cues %}<p class="ex-card-cues">{{ e.cues }}</p>{% endif %}
+    </div>
+
+    <footer class="ex-card-foot">
+      <span class="ex-card-status">{% if e.is_active %}Ativo{% else %}Inativo{% endif %}</span>
+      <div class="ex-card-actions">
+        <a class="btn btn-sm btn-outline" href="{% url 'training:exercise_update' e.pk %}">Editar</a>
+        <a class="btn btn-sm btn-danger" href="{% url 'training:exercise_delete' e.pk %}" aria-label="Excluir">×</a>
+      </div>
+    </footer>
+  </article>
+  {% endfor %}
+</div>
+<div class="ex-empty hidden" data-no-results>
+  <strong>Nada encontrado.</strong>
+  <p class="muted" style="margin: 6px 0 0;">Tente outro termo ou limpe o filtro.</p>
+</div>
+{% else %}
+<div class="ex-empty">
+  <strong>Nenhum exercício{% if query %} para "{{ query }}"{% endif %}.</strong>
+  <p class="muted" style="margin: 6px 0 0;">Ajuste o filtro ou crie um novo exercício.</p>
+</div>
+{% endif %}
 
 <script>
   (function () {
-    const form = document.querySelector('[data-search-form]');
+    const form  = document.querySelector('[data-search-form]');
     const input = document.querySelector('[data-search-input]');
-    const table = document.querySelector('[data-search-table]');
-    const noResults = document.querySelector('[data-no-results]');
-    if (!form || !input || !table) return;
+    const grid  = document.querySelector('[data-grid]');
+    const none  = document.querySelector('[data-no-results]');
+    const clear = document.querySelector('[data-search-clear]');
+    const kbd   = document.querySelector('[data-search-kbd]');
+    if (!input) return;
 
-    // Submit ao Enter; filtragem ao vivo no cliente.
-    function applyFilter() {
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      }[c]));
+    }
+
+    function apply() {
       const term = input.value.trim().toLowerCase();
-      const rows = table.querySelectorAll('tr[data-row]');
+      if (clear) clear.hidden = !term;
+      if (!grid) return;
+      const cards = grid.querySelectorAll('[data-search-haystack]');
       let visible = 0;
-      rows.forEach(row => {
-        const hay = row.getAttribute('data-search-haystack') || '';
-        const nameEl = row.querySelector('[data-search-name]');
+      cards.forEach(card => {
+        const hay = card.getAttribute('data-search-haystack') || '';
         const match = !term || hay.includes(term);
-        row.classList.toggle('hidden', !match);
+        card.classList.toggle('hidden', !match);
         if (match) visible++;
+        const nameEl = card.querySelector('[data-search-name]');
         if (nameEl) {
           const original = nameEl.getAttribute('data-original') || nameEl.textContent;
           nameEl.setAttribute('data-original', original);
           if (term) {
             const re = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
-            nameEl.innerHTML = original.replace(re, '<mark>$1</mark>');
+            nameEl.innerHTML = escapeHtml(original).replace(re, '<mark>$1</mark>');
           } else {
             nameEl.textContent = original;
           }
         }
       });
-      if (noResults) noResults.classList.toggle('hidden', visible > 0);
+      if (none) none.classList.toggle('hidden', visible > 0);
     }
 
-    let timeout = null;
+    let t = null;
     input.addEventListener('input', () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(applyFilter, 80);
+      clearTimeout(t);
+      t = setTimeout(apply, 60);
+    });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && input.value) {
+        e.preventDefault();
+        input.value = '';
+        apply();
+      }
     });
 
-    // Ao abrir a página com termo no input, aplica destaque imediatamente.
-    if (input.value) applyFilter();
+    // Atalho global: tecla "/" foca a busca, como em sites SaaS.
+    document.addEventListener('keydown', e => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      e.preventDefault();
+      input.focus();
+      input.select();
+    });
+
+    // O kbd serve apenas como dica; ele some quando o input ganha foco.
+    if (kbd) {
+      input.addEventListener('focus', () => kbd.style.opacity = '0.4');
+      input.addEventListener('blur',  () => kbd.style.opacity = '1');
+    }
+
+    if (input.value) apply();
   })();
 </script>
 {% endblock %}

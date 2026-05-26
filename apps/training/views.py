@@ -190,32 +190,20 @@ def plan_remove_week(request, pk: int, week_number: int):
 
 _LABEL_LETTERS = ["A", "B", "C", "D", "E", "F", "G"]
 
-# Distribuição padrão por dia da semana (0 = segunda, 6 = domingo).
-# Pensado como um treinador montaria: começa segunda, distribui ao longo da
-# semana mantendo descansos coerentes. Determinístico — nunca embaralha.
-_DEFAULT_WEEKDAYS_BY_FREQ: dict[int, list[int]] = {
-    1: [0],                       # seg
-    2: [0, 3],                    # seg, qui
-    3: [0, 2, 4],                 # seg, qua, sex
-    4: [0, 1, 3, 4],              # seg, ter, qui, sex
-    5: [0, 1, 2, 3, 4],           # seg–sex
-    6: [0, 1, 2, 3, 4, 5],        # seg–sáb
-    7: [0, 1, 2, 3, 4, 5, 6],     # seg–dom
-}
-
 
 def _create_default_sessions_for_week(week: TrainingWeek, frequency: int) -> None:
-    """Cria sessões nos dias da semana, em ordem fixa e previsível."""
+    """Cria N sessões em dias consecutivos, a partir do início da semana.
+
+    Frequência 4 → 4 dias seguidos a partir de segunda (Seg/Ter/Qua/Qui),
+    deixando os últimos dias da semana como descanso. Determinístico, sem
+    embaralhamento.
+    """
     frequency = max(1, min(frequency, 7))
-    weekdays = _DEFAULT_WEEKDAYS_BY_FREQ[frequency]
-    start_weekday = week.start_date.weekday()
-    for idx, weekday in enumerate(weekdays):
-        # Quantos dias a partir do início da semana até este weekday.
-        offset = (weekday - start_weekday) % 7
+    for offset in range(frequency):
         TrainingSession.objects.create(
             week=week,
             scheduled_date=week.start_date + timedelta(days=offset),
-            label=_LABEL_LETTERS[idx],
+            label=_LABEL_LETTERS[offset],
         )
 
 

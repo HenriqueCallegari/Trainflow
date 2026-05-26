@@ -130,15 +130,111 @@
       {% csrf_token %}
       <div class="form-grid">
         {% for field in add_exercise_form %}
-          <div class="field {% if forloop.first %}full-width{% endif %}">
-            <label>{{ field.label }}</label>
-            {{ field }}
-            {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
-          </div>
+          {% if field.name == "exercise" %}
+            <div class="field full-width">
+              <label>{{ field.label }}</label>
+              <div class="ex-picker" data-ex-picker>
+                <input type="hidden" name="exercise" data-ex-value value="">
+                <div class="ex-picker-input-wrap">
+                  <span class="search-icon" aria-hidden="true">⌕</span>
+                  <input type="text"
+                         class="input ex-picker-search"
+                         placeholder="Pesquisar exercício, cue ou movimento..."
+                         data-ex-search
+                         autocomplete="off">
+                  <span class="ex-picker-selected" data-ex-selected>—</span>
+                </div>
+                <div class="ex-picker-list" data-ex-list hidden></div>
+              </div>
+              {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+            </div>
+          {% else %}
+            <div class="field">
+              <label>{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<small class="muted">{{ field.help_text }}</small>{% endif %}
+            </div>
+          {% endif %}
         {% endfor %}
       </div>
       <button class="btn" type="submit" style="margin-top: 10px;">Adicionar</button>
     </form>
+
+    {{ exercises_data|json_script:"exercises-data" }}
+    <script>
+      (function () {
+        const root = document.querySelector('[data-ex-picker]');
+        if (!root) return;
+        const dataEl = document.getElementById('exercises-data');
+        if (!dataEl) return;
+        const exercises = JSON.parse(dataEl.textContent);
+
+        const search = root.querySelector('[data-ex-search]');
+        const hidden = root.querySelector('[data-ex-value]');
+        const list   = root.querySelector('[data-ex-list]');
+        const tag    = root.querySelector('[data-ex-selected]');
+
+        function escapeHtml(s) {
+          return s.replace(/[&<>"']/g, c => ({
+            '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+          }[c]));
+        }
+        function highlight(text, term) {
+          if (!term) return escapeHtml(text);
+          const safe = escapeHtml(text);
+          const re = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+          return safe.replace(re, '<mark>$1</mark>');
+        }
+        function render(term) {
+          const t = (term || '').trim().toLowerCase();
+          const matches = exercises.filter(ex => {
+            if (!t) return true;
+            const hay = (ex.name + ' ' + ex.tier + ' ' + ex.main_lift + ' ' + (ex.cues || '')).toLowerCase();
+            return hay.includes(t);
+          }).slice(0, 60);
+          if (matches.length === 0) {
+            list.innerHTML = '<div class="ex-picker-empty">Nada encontrado.</div>';
+          } else {
+            list.innerHTML = matches.map(ex => (
+              '<button type="button" class="ex-picker-item" data-id="' + ex.id + '">'
+              + '<strong>' + highlight(ex.name, t) + '</strong>'
+              + '<small class="muted"> · ' + escapeHtml(ex.tier) + ' · ' + escapeHtml(ex.main_lift) + '</small>'
+              + '</button>'
+            )).join('');
+          }
+          list.hidden = false;
+        }
+
+        function select(id, name) {
+          hidden.value = id;
+          tag.textContent = name;
+          tag.classList.add('is-set');
+          search.value = '';
+          list.hidden = true;
+        }
+
+        search.addEventListener('focus', () => render(search.value));
+        search.addEventListener('input', () => render(search.value));
+        search.addEventListener('keydown', e => {
+          if (e.key === 'Escape') { list.hidden = true; search.blur(); }
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const first = list.querySelector('.ex-picker-item');
+            if (first) first.click();
+          }
+        });
+        list.addEventListener('click', e => {
+          const btn = e.target.closest('.ex-picker-item');
+          if (!btn) return;
+          const id = btn.dataset.id;
+          const ex = exercises.find(x => String(x.id) === id);
+          if (ex) select(ex.id, ex.name);
+        });
+        document.addEventListener('click', e => {
+          if (!root.contains(e.target)) list.hidden = true;
+        });
+      })();
+    </script>
     {% if rep_schemes %}
     <script>
       // Preenche planned_sets e planned_reps quando clica num chip de esquema.

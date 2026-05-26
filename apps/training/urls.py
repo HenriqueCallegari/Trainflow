@@ -17,6 +17,11 @@ urlpatterns = [
     path("planos/<int:pk>/semanas/adicionar/", views.plan_add_week, name="plan_add_week"),
     path("planos/<int:pk>/semanas/<int:week_number>/remover/",
          views.plan_remove_week, name="plan_remove_week"),
+    path("planos/<int:pk>/semanas/<int:week_number>/copiar/",
+         views.week_copy, name="week_copy"),
+
+    # Exportar plano em CSV
+    path("planos/<int:pk>/csv/", views.plan_export_csv, name="plan_export_csv"),
 
     # Sessões
     path("sessoes/<int:pk>/", views.TrainingSessionDetailView.as_view(), name="session_detail"),

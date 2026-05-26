@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import csv
 from datetime import timedelta
 
 from django.contrib import messages
@@ -13,7 +14,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
 from django.db.models import Q
-from django.http import Http404, HttpResponseForbidden
+from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -241,6 +242,17 @@ class TrainingSessionDetailView(LoginRequiredMixin, TemplateView):
 
         can_edit = user_manages_plan(self.request.user, plan)
 
+        exercises_payload: list[dict] = []
+        if can_edit:
+            for ex in ExerciseLibrary.objects.filter(is_active=True).order_by("tier", "name"):
+                exercises_payload.append({
+                    "id": ex.id,
+                    "name": ex.name,
+                    "tier": ex.get_tier_display(),
+                    "main_lift": ex.get_main_lift_display(),
+                    "cues": ex.cues,
+                })
+
         ctx.update({
             "session": session,
             "plan": plan,
@@ -252,6 +264,7 @@ class TrainingSessionDetailView(LoginRequiredMixin, TemplateView):
                 RepScheme.objects.filter(trainer=plan.trainer)
                 if can_edit else RepScheme.objects.none()
             ),
+            "exercises_data": exercises_payload,
             "feedback": getattr(session, "feedback", None),
             "feedback_form": self._build_feedback_form(session),
             "ml_squat": ExerciseLibrary.MainLift.SQUAT,
@@ -801,3 +814,154 @@ class RepSchemeDeleteView(LoginRequiredMixin, TrainerRequiredMixin, DeleteView):
 
     def get_queryset(self):
         return RepScheme.objects.filter(trainer=self.request.user)
+
+
+# ============================================================================
+# Copiar semana — duplica sessões e exercícios numa nova semana ao fim do plano
+# ============================================================================
+
+
+_COPYABLE_SE_FIELDS = (
+    "exercise", "order",
+    "planned_sets", "planned_reps",
+    "planned_load_percentage", "reference_1rm_kg", "planned_load_kg_manual",
+    "planned_rpe", "rest_seconds",
+)
+
+
+@login_required
+@require_POST
+def week_copy(request, pk: int, week_number: int):
+    """Duplica a semana N como nova semana no fim do plano.
+
+    Copia título/letra das sessões e a prescrição (planejado). Não copia
+    execução, feedback nem status de concluído.
+    """
+    plan = get_object_or_404(TrainingPlan, pk=pk)
+    if not user_manages_plan(request.user, plan):
+        return HttpResponseForbidden()
+
+    src = get_object_or_404(TrainingWeek, plan=plan, week_number=week_number)
+
+    with transaction.atomic():
+        last = plan.weeks.order_by("-week_number").first()
+        next_num = (last.week_number if last else 0) + 1
+        start = last.end_date + timedelta(days=1)
+        end = start + timedelta(days=6)
+
+        new_week = TrainingWeek.objects.create(
+            plan=plan, week_number=next_num,
+            start_date=start, end_date=end,
+            block_type=src.block_type, focus=src.focus, notes=src.notes,
+        )
+
+        for old_session in src.sessions.all().order_by("scheduled_date", "id"):
+            day_offset = (old_session.scheduled_date - src.start_date).days
+            new_session = TrainingSession.objects.create(
+                week=new_week,
+                scheduled_date=new_week.start_date + timedelta(days=day_offset),
+                label=old_session.label,
+                title=old_session.title,
+                notes=old_session.notes,
+            )
+            for old_se in old_session.session_exercises.all().order_by("order", "id"):
+                clone = SessionExercise(session=new_session)
+                for field in _COPYABLE_SE_FIELDS:
+                    setattr(clone, field, getattr(old_se, field))
+                clone.save()
+
+    messages.success(
+        request,
+        f"Semana {src.week_number} copiada como semana {next_num}.",
+    )
+    return redirect("training:plan_detail", pk=plan.pk)
+
+
+# ============================================================================
+# Exportar plano em CSV
+# ============================================================================
+
+
+_CSV_HEADERS = [
+    "Plano", "Atleta", "Semana", "Bloco",
+    "Data", "Dia da semana", "Treino", "Título sessão",
+    "#", "Exercício", "Classificação", "Movimento-pai",
+    "Séries", "Reps", "% 1RM", "1RM ref. (kg)", "Carga prevista (kg)",
+    "RPE alvo", "Descanso (s)",
+    "Carga feita (kg)", "Reps executadas", "Séries completadas", "RPE real",
+    "Concluída", "Observações",
+]
+
+_WEEKDAYS_PT = [
+    "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo",
+]
+
+
+@login_required
+def plan_export_csv(request, pk: int):
+    """Exporta o plano inteiro em CSV, uma linha por exercício prescrito."""
+    plan = get_object_or_404(
+        TrainingPlan.objects.select_related("athlete", "trainer"), pk=pk,
+    )
+    if not user_can_view_plan(request.user, plan):
+        raise Http404
+
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in plan.name)
+    response["Content-Disposition"] = (
+        f'attachment; filename="trainflow_{safe_name}_{plan.pk}.csv"'
+    )
+    response.write("﻿")  # BOM para Excel reconhecer UTF-8.
+
+    writer = csv.writer(response, delimiter=";")
+    writer.writerow(_CSV_HEADERS)
+
+    athlete_label = plan.athlete.get_full_name() or plan.athlete.username
+    weeks = (
+        plan.weeks.prefetch_related("sessions__session_exercises__exercise")
+        .order_by("week_number")
+    )
+    for week in weeks:
+        for session in week.sessions.all().order_by("scheduled_date", "id"):
+            exercises = list(session.session_exercises.all().order_by("order", "id"))
+            if not exercises:
+                writer.writerow([
+                    plan.name, athlete_label,
+                    week.week_number, week.get_block_type_display(),
+                    session.scheduled_date.isoformat(),
+                    _WEEKDAYS_PT[session.scheduled_date.weekday()],
+                    session.label or "", session.title or "",
+                    "", "", "", "",
+                    "", "", "", "", "",
+                    "", "",
+                    "", "", "", "",
+                    "Sim" if session.completed else "Não",
+                    "",
+                ])
+                continue
+            for se in exercises:
+                planned_kg = se.planned_load_kg
+                writer.writerow([
+                    plan.name, athlete_label,
+                    week.week_number, week.get_block_type_display(),
+                    session.scheduled_date.isoformat(),
+                    _WEEKDAYS_PT[session.scheduled_date.weekday()],
+                    session.label or "", session.title or "",
+                    se.order, se.exercise.name,
+                    se.exercise.get_tier_display(),
+                    se.exercise.get_main_lift_display(),
+                    se.planned_sets, se.planned_reps or "",
+                    se.planned_load_percentage if se.planned_load_percentage is not None else "",
+                    se.reference_1rm_kg if se.reference_1rm_kg is not None else "",
+                    planned_kg if planned_kg is not None else "",
+                    se.planned_rpe if se.planned_rpe is not None else "",
+                    se.rest_seconds,
+                    se.actual_load_kg if se.actual_load_kg is not None else "",
+                    se.actual_reps if se.actual_reps is not None else "",
+                    se.actual_sets if se.actual_sets is not None else "",
+                    se.actual_rpe if se.actual_rpe is not None else "",
+                    "Sim" if session.completed else "Não",
+                    (se.notes or "").replace("\n", " "),
+                ])
+
+    return response

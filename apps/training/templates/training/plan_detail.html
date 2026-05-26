@@ -10,16 +10,17 @@
       {% if plan.goal %} · {{ plan.goal }}{% endif %}
     </p>
   </div>
-  {% if can_edit %}
   <div class="actions">
-    <a class="btn btn-outline" href="{% url 'training:plan_update' plan.pk %}">Editar</a>
-    <form method="post" action="{% url 'training:plan_add_week' plan.pk %}" style="display:inline">
-      {% csrf_token %}
-      <button class="btn" type="submit">+ Semana</button>
-    </form>
-    <a class="btn btn-danger" href="{% url 'training:plan_delete' plan.pk %}">Excluir plano</a>
+    <a class="btn btn-outline" href="{% url 'training:plan_export_csv' plan.pk %}" title="Baixar CSV organizado por colunas">↓ CSV</a>
+    {% if can_edit %}
+      <a class="btn btn-outline" href="{% url 'training:plan_update' plan.pk %}">Editar</a>
+      <form method="post" action="{% url 'training:plan_add_week' plan.pk %}" style="display:inline">
+        {% csrf_token %}
+        <button class="btn" type="submit">+ Semana</button>
+      </form>
+      <a class="btn btn-danger" href="{% url 'training:plan_delete' plan.pk %}">Excluir plano</a>
+    {% endif %}
   </div>
-  {% endif %}
 </div>
 
 {% if weeks %}
@@ -42,6 +43,13 @@
             <input type="text" name="label" placeholder="A" maxlength="3" class="input" style="width: 60px;">
             <input type="date" name="scheduled_date" class="input" required>
             <button class="btn btn-sm" type="submit">+ Dia</button>
+          </form>
+          <form method="post"
+                action="{% url 'training:week_copy' plan.pk week.week_number %}"
+                title="Duplicar esta semana como nova semana ao fim do plano"
+                style="display:inline">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-outline" type="submit">⎘ Copiar semana</button>
           </form>
           <form method="post" action="{% url 'training:plan_remove_week' plan.pk week.week_number %}"
                 onsubmit="return confirm('Remover a semana {{ week.week_number }} e todas as suas sessões?')"

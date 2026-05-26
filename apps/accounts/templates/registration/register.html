@@ -1,19 +1,44 @@
 {% extends "base.html" %}
+{% block title %}Criar conta — TrainFlow{% endblock %}
 {% block content %}
-<div class="auth-panel card">
-  <h1>Criar conta de treinador</h1>
-  <p class="muted">Contas de atleta são criadas pelo treinador responsável, dentro do sistema.</p>
-  <form method="post">{% csrf_token %}
-    {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors }}</div>{% endif %}
-    {% for field in form %}
-      <div class="field" style="margin-bottom: 14px;">
-        <label>{{ field.label }}</label>{{ field }}
-        {% if field.help_text %}<small class="muted">{{ field.help_text|safe }}</small>{% endif %}
-        {% if field.errors %}<small style="color:var(--danger);">{{ field.errors|join:", " }}</small>{% endif %}
-      </div>
-    {% endfor %}
-    <button class="btn" type="submit">Registrar</button>
-    <a class="btn btn-outline" href="{% url 'login' %}">Já tenho conta</a>
-  </form>
+<div class="auth-panel">
+  <div class="auth-card">
+    <div class="auth-mark" aria-hidden="true">
+      <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="reg-grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#4ade80"/>
+            <stop offset="1" stop-color="#22d3ee"/>
+          </linearGradient>
+        </defs>
+        <rect x="2" y="2" width="52" height="52" rx="14" fill="url(#reg-grad)" opacity="0.18"/>
+        <path d="M16 28h24M28 16v24"
+              stroke="url(#reg-grad)" stroke-width="3"
+              stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1 class="auth-title">Criar conta de treinador</h1>
+    <p class="auth-subtitle muted">
+      Contas de atleta são criadas pelo treinador responsável, dentro do sistema.
+    </p>
+
+    <form method="post" class="auth-form">{% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-error">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+        <div class="field auth-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.help_text %}<small class="muted auth-help">{{ field.help_text|safe }}</small>{% endif %}
+          {% if field.errors %}<small class="auth-error">{{ field.errors|join:", " }}</small>{% endif %}
+        </div>
+      {% endfor %}
+      <button class="btn auth-submit" type="submit">Registrar</button>
+    </form>
+
+    <div class="auth-divider"><span>ou</span></div>
+    <a class="btn btn-outline auth-alt" href="{% url 'login' %}">Já tenho conta</a>
+  </div>
 </div>
 {% endblock %}

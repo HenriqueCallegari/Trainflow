@@ -1,17 +1,46 @@
 {% extends "base.html" %}
+{% block title %}Entrar — TrainFlow{% endblock %}
 {% block content %}
-<div class="auth-panel card">
-  <h1>Entrar</h1>
-  <form method="post">{% csrf_token %}
-    {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors }}</div>{% endif %}
-    {% for field in form %}
-      <div class="field" style="margin-bottom: 14px;">
-        <label>{{ field.label }}</label>{{ field }}
-        {% if field.errors %}<small style="color:var(--danger);">{{ field.errors|join:", " }}</small>{% endif %}
-      </div>
-    {% endfor %}
-    <button class="btn" type="submit">Entrar</button>
-    <a class="btn btn-outline" href="{% url 'accounts:register' %}">Sou treinador, criar conta</a>
-  </form>
+<div class="auth-panel">
+  <div class="auth-card">
+    <div class="auth-mark" aria-hidden="true">
+      <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="auth-grad" x1="0" y1="0" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#4ade80"/>
+            <stop offset="1" stop-color="#22d3ee"/>
+          </linearGradient>
+        </defs>
+        <rect x="2" y="2" width="52" height="52" rx="14" fill="url(#auth-grad)" opacity="0.18"/>
+        <path d="M14 36 L22 28 L30 32 L42 18"
+              stroke="url(#auth-grad)" stroke-width="3"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="42" cy="18" r="3.5" fill="#4ade80"/>
+      </svg>
+    </div>
+    <h1 class="auth-title">Entrar no TrainFlow</h1>
+    <p class="auth-subtitle muted">Gestão de treinos de powerlifting.</p>
+
+    <form method="post" class="auth-form">{% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-error">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+        <div class="field auth-field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <small class="auth-error">{{ field.errors|join:", " }}</small>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button class="btn auth-submit" type="submit">Entrar</button>
+    </form>
+
+    <div class="auth-divider"><span>ou</span></div>
+    <a class="btn btn-outline auth-alt" href="{% url 'accounts:register' %}">
+      Sou treinador — criar conta
+    </a>
+  </div>
 </div>
 {% endblock %}

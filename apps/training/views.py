@@ -168,7 +168,9 @@ def plan_add_week(request, pk: int):
             plan=plan, week_number=next_num,
             start_date=start, end_date=end,
         )
-        _create_default_sessions_for_week(week, plan.weekly_frequency)
+        # Sempre criamos os 7 dias (Seg–Dom). O treinador apaga os dias
+        # que não quer usar — não impomos dia de descanso.
+        _create_default_sessions_for_week(week, 7)
 
     messages.success(request, f"Semana {next_num} adicionada.")
     return redirect("training:plan_detail", pk=plan.pk)

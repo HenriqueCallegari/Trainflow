@@ -23,25 +23,36 @@
     </div>
     <nav class="nav">
       {% if user.is_authenticated %}
-        <a href="{% url 'dashboard:home' %}">Painel</a>
-        <a href="{% url 'training:plan_list' %}">Planos</a>
+        {% url 'dashboard:home' as u_home %}
+        {% url 'training:plan_list' as u_plans %}
+        {% url 'accounts:my_athletes' as u_athletes %}
+        {% url 'training:exercise_list' as u_ex %}
+        {% url 'training:template_list' as u_tpl %}
+        {% url 'training:repscheme_list' as u_reps %}
+        {% url 'training:anamnesis_list' as u_anam %}
+        {% url 'dashboard:tonnage' as u_ton %}
+        {% url 'training:pr_list' as u_prs %}
+        {% url 'dashboard:calculators' as u_calc %}
+        {% url 'accounts:my_profile' as u_me %}
+        <a href="{{ u_home }}"     {% if request.path == u_home %}class="is-active"{% endif %}>Painel</a>
+        <a href="{{ u_plans }}"    {% if u_plans in request.path %}class="is-active"{% endif %}>Planos</a>
         {% if user.profile.is_trainer or user.is_superuser %}
-          <a href="{% url 'accounts:my_athletes' %}">Atletas</a>
-          <a href="{% url 'training:exercise_list' %}">Exercícios</a>
-          <a href="{% url 'training:template_list' %}">Templates</a>
-          <a href="{% url 'training:repscheme_list' %}">Reps</a>
-          <a href="{% url 'training:anamnesis_list' %}">Anamnese</a>
+          <a href="{{ u_athletes }}" {% if u_athletes in request.path %}class="is-active"{% endif %}>Atletas</a>
+          <a href="{{ u_ex }}"       {% if u_ex in request.path %}class="is-active"{% endif %}>Exercícios</a>
+          <a href="{{ u_tpl }}"      {% if u_tpl in request.path %}class="is-active"{% endif %}>Templates</a>
+          <a href="{{ u_reps }}"     {% if u_reps in request.path %}class="is-active"{% endif %}>Reps</a>
+          <a href="{{ u_anam }}"     {% if u_anam in request.path %}class="is-active"{% endif %}>Anamnese</a>
         {% endif %}
-        <a href="{% url 'dashboard:tonnage' %}">Tonelagem</a>
-        <a href="{% url 'training:pr_list' %}">PRs</a>
-        <a href="{% url 'dashboard:calculators' %}">Calculadoras</a>
-        <a href="{% url 'accounts:my_profile' %}">{{ user.username }}</a>
+        <a href="{{ u_ton }}"  {% if u_ton in request.path %}class="is-active"{% endif %}>Tonelagem</a>
+        <a href="{{ u_prs }}"  {% if u_prs in request.path %}class="is-active"{% endif %}>PRs</a>
+        <a href="{{ u_calc }}" {% if u_calc in request.path %}class="is-active"{% endif %}>Calculadoras</a>
+        <a href="{{ u_me }}"   {% if u_me in request.path %}class="is-active"{% endif %}>{{ user.username }}</a>
         <form action="{% url 'logout' %}" method="post" style="display:inline">
           {% csrf_token %}
           <button class="nav-logout" type="submit">Sair</button>
         </form>
       {% else %}
-        <a href="{% url 'login' %}">Entrar</a>
+        <a href="{% url 'login' %}"{% if request.path == '/contas/entrar/' %} class="is-active"{% endif %}>Entrar</a>
         <a href="{% url 'accounts:register' %}">Registrar treinador</a>
       {% endif %}
     </nav>

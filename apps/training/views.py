@@ -12,6 +12,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import transaction
+from django.db.models import Q
 from django.http import Http404, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
@@ -157,7 +158,9 @@ def plan_add_week(request, pk: int):
         if last:
             start = last.end_date + timedelta(days=1)
         else:
-            start = plan.start_date
+            # Primeira semana: ancora na segunda-feira da semana de início do plano,
+            # para alinhar o calendário com a semana convencional.
+            start = plan.start_date - timedelta(days=plan.start_date.weekday())
         end = start + timedelta(days=6)
 
         week = TrainingWeek.objects.create(
@@ -184,17 +187,34 @@ def plan_remove_week(request, pk: int, week_number: int):
     return redirect("training:plan_detail", pk=plan.pk)
 
 
+_LABEL_LETTERS = ["A", "B", "C", "D", "E", "F", "G"]
+
+# Distribuição padrão por dia da semana (0 = segunda, 6 = domingo).
+# Pensado como um treinador montaria: começa segunda, distribui ao longo da
+# semana mantendo descansos coerentes. Determinístico — nunca embaralha.
+_DEFAULT_WEEKDAYS_BY_FREQ: dict[int, list[int]] = {
+    1: [0],                       # seg
+    2: [0, 3],                    # seg, qui
+    3: [0, 2, 4],                 # seg, qua, sex
+    4: [0, 1, 3, 4],              # seg, ter, qui, sex
+    5: [0, 1, 2, 3, 4],           # seg–sex
+    6: [0, 1, 2, 3, 4, 5],        # seg–sáb
+    7: [0, 1, 2, 3, 4, 5, 6],     # seg–dom
+}
+
+
 def _create_default_sessions_for_week(week: TrainingWeek, frequency: int) -> None:
-    """Cria sessões vazias distribuídas na semana, conforme a frequência."""
+    """Cria sessões nos dias da semana, em ordem fixa e previsível."""
     frequency = max(1, min(frequency, 7))
-    if frequency == 1:
-        offsets = [0]
-    else:
-        offsets = sorted({round(i * 6 / (frequency - 1)) for i in range(frequency)})
-    for offset in offsets:
+    weekdays = _DEFAULT_WEEKDAYS_BY_FREQ[frequency]
+    start_weekday = week.start_date.weekday()
+    for idx, weekday in enumerate(weekdays):
+        # Quantos dias a partir do início da semana até este weekday.
+        offset = (weekday - start_weekday) % 7
         TrainingSession.objects.create(
             week=week,
             scheduled_date=week.start_date + timedelta(days=offset),
+            label=_LABEL_LETTERS[idx],
         )
 
 
@@ -507,7 +527,24 @@ class ExerciseLibraryListView(LoginRequiredMixin, TrainerRequiredMixin, ListView
             qs = qs.filter(tier=tier)
         query = self.request.GET.get("q", "").strip()
         if query:
-            qs = qs.filter(name__icontains=query)
+            # Busca em nome, cues e nos rótulos legíveis de tier/movimento-pai.
+            tier_values = [
+                value for value, label in ExerciseLibrary.Tier.choices
+                if query.lower() in label.lower()
+            ]
+            lift_values = [
+                value for value, label in ExerciseLibrary.MainLift.choices
+                if query.lower() in label.lower()
+            ]
+            condition = (
+                Q(name__icontains=query)
+                | Q(cues__icontains=query)
+            )
+            if tier_values:
+                condition |= Q(tier__in=tier_values)
+            if lift_values:
+                condition |= Q(main_lift__in=lift_values)
+            qs = qs.filter(condition).distinct()
         return qs
 
     def get_context_data(self, **kwargs):

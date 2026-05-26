@@ -1,44 +1,130 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="page-header">
-  <div><h1>Biblioteca de exercícios</h1></div>
+  <div>
+    <h1>Biblioteca de exercícios</h1>
+    <p class="muted">Pesquise por nome, cue, movimento-pai ou classificação.</p>
+  </div>
   <div class="actions"><a class="btn" href="{% url 'training:exercise_create' %}">+ Novo</a></div>
 </div>
 
-<div class="card" style="margin-bottom: 14px;">
-  <form method="get" class="search-bar">
-    <input type="search" name="q" placeholder="Buscar exercício..." value="{{ query }}" class="input" autofocus>
+<div class="card search-card">
+  <form method="get" class="search-bar" data-search-form>
+    <div class="search-input-wrap">
+      <span class="search-icon" aria-hidden="true">⌕</span>
+      <input
+        type="search"
+        name="q"
+        placeholder="Buscar exercício, cue, movimento..."
+        value="{{ query }}"
+        class="input search-input"
+        autofocus
+        autocomplete="off"
+        data-search-input>
+      {% if query %}<a href="{% url 'training:exercise_list' %}{% if active_tier %}?tier={{ active_tier }}{% endif %}" class="search-clear" title="Limpar">×</a>{% endif %}
+    </div>
     {% if active_tier %}<input type="hidden" name="tier" value="{{ active_tier }}">{% endif %}
     <button class="btn" type="submit">Buscar</button>
-    {% if query or active_tier %}<a class="btn btn-outline" href="{% url 'training:exercise_list' %}">Limpar</a>{% endif %}
   </form>
-</div>
-
-<div class="week-list">
-  <a class="{% if not active_tier %}active{% endif %}" href="?{% if query %}q={{ query }}{% endif %}">Todos</a>
-  {% for value, label in tiers %}
-    <a class="{% if active_tier == value %}active{% endif %}"
-       href="?tier={{ value }}{% if query %}&q={{ query }}{% endif %}">{{ label }}</a>
-  {% endfor %}
+  <div class="filter-chips" role="tablist">
+    <a class="chip {% if not active_tier %}chip-active{% endif %}"
+       href="?{% if query %}q={{ query }}{% endif %}">Todos</a>
+    {% for value, label in tiers %}
+      <a class="chip {% if active_tier == value %}chip-active{% endif %}"
+         href="?tier={{ value }}{% if query %}&q={{ query }}{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
 </div>
 
 <div class="card"><div class="table-wrap">
-  <table>
-    <thead><tr><th>Nome</th><th>Tier</th><th>Movimento-pai</th><th>Ativo</th><th></th></tr></thead>
+  <table data-search-table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Tier</th>
+        <th>Movimento-pai</th>
+        <th>Ativo</th>
+        <th></th>
+      </tr>
+    </thead>
     <tbody>
       {% for e in exercises %}
-      <tr>
-        <td><strong>{{ e.name }}</strong>{% if e.cues %}<p class="muted">{{ e.cues|truncatewords:15 }}</p>{% endif %}</td>
+      <tr
+        data-row
+        data-search-haystack="{{ e.name|lower }} {{ e.get_tier_display|lower }} {{ e.get_main_lift_display|lower }} {{ e.cues|lower }}">
+        <td>
+          <strong data-search-name>{{ e.name }}</strong>
+          {% if e.cues %}<p class="muted">{{ e.cues|truncatewords:15 }}</p>{% endif %}
+        </td>
         <td>{{ e.get_tier_display }}</td>
         <td>{{ e.get_main_lift_display }}</td>
-        <td>{% if e.is_active %}<span class="badge badge-success">Sim</span>{% else %}<span class="badge">Não</span>{% endif %}</td>
         <td>
+          {% if e.is_active %}
+            <span class="badge badge-success">Sim</span>
+          {% else %}
+            <span class="badge">Não</span>
+          {% endif %}
+        </td>
+        <td class="actions-cell">
           <a class="btn btn-sm btn-outline" href="{% url 'training:exercise_update' e.pk %}">Editar</a>
           <a class="btn btn-sm btn-danger" href="{% url 'training:exercise_delete' e.pk %}">×</a>
         </td>
       </tr>
-      {% empty %}<tr><td colspan="5" class="muted">Nenhum exercício encontrado{% if query %} para "{{ query }}"{% endif %}.</td></tr>{% endfor %}
+      {% empty %}
+      <tr data-empty-row>
+        <td colspan="5" class="muted empty-state">
+          Nenhum exercício encontrado{% if query %} para "<strong>{{ query }}</strong>"{% endif %}.
+        </td>
+      </tr>
+      {% endfor %}
     </tbody>
   </table>
+  <div class="empty-state hidden" data-no-results>
+    Nenhum exercício corresponde ao filtro atual.
+  </div>
 </div></div>
+
+<script>
+  (function () {
+    const form = document.querySelector('[data-search-form]');
+    const input = document.querySelector('[data-search-input]');
+    const table = document.querySelector('[data-search-table]');
+    const noResults = document.querySelector('[data-no-results]');
+    if (!form || !input || !table) return;
+
+    // Submit ao Enter; filtragem ao vivo no cliente.
+    function applyFilter() {
+      const term = input.value.trim().toLowerCase();
+      const rows = table.querySelectorAll('tr[data-row]');
+      let visible = 0;
+      rows.forEach(row => {
+        const hay = row.getAttribute('data-search-haystack') || '';
+        const nameEl = row.querySelector('[data-search-name]');
+        const match = !term || hay.includes(term);
+        row.classList.toggle('hidden', !match);
+        if (match) visible++;
+        if (nameEl) {
+          const original = nameEl.getAttribute('data-original') || nameEl.textContent;
+          nameEl.setAttribute('data-original', original);
+          if (term) {
+            const re = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+            nameEl.innerHTML = original.replace(re, '<mark>$1</mark>');
+          } else {
+            nameEl.textContent = original;
+          }
+        }
+      });
+      if (noResults) noResults.classList.toggle('hidden', visible > 0);
+    }
+
+    let timeout = null;
+    input.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(applyFilter, 80);
+    });
+
+    // Ao abrir a página com termo no input, aplica destaque imediatamente.
+    if (input.value) applyFilter();
+  })();
+</script>
 {% endblock %}

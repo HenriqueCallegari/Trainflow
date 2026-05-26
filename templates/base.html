@@ -8,6 +8,14 @@
   <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 </head>
 <body>
+  <div id="page-loader" class="page-loader" aria-hidden="true">
+    <div class="page-loader-mark">
+      <span class="page-loader-dot"></span>
+      <span class="page-loader-name">TrainFlow</span>
+    </div>
+    <div class="page-loader-bar"><span></span></div>
+  </div>
+
   <header class="topbar">
     <div class="brand">
       <a href="{% url 'dashboard:home' %}">TrainFlow</a>
@@ -39,7 +47,7 @@
     </nav>
   </header>
 
-  <main class="container">
+  <main class="container page-enter">
     {% if messages %}
       {% for message in messages %}
         <div class="alert alert-{{ message.tags }}">{{ message }}</div>
@@ -51,5 +59,23 @@
   <footer class="footer">
     <small class="muted">TrainFlow — Gestão de treinos de powerlifting</small>
   </footer>
+
+  <script>
+    (function () {
+      const loader = document.getElementById('page-loader');
+      if (!loader) return;
+      function hide() {
+        loader.classList.add('is-hidden');
+        setTimeout(() => loader.remove(), 500);
+      }
+      if (document.readyState === 'complete') {
+        requestAnimationFrame(hide);
+      } else {
+        window.addEventListener('load', () => requestAnimationFrame(hide), { once: true });
+      }
+      // Fallback de segurança: nunca deixar o loader travado.
+      setTimeout(hide, 2500);
+    })();
+  </script>
 </body>
 </html>
